@@ -1,11 +1,12 @@
 import Slider from '@react-native-community/slider';
 import { throttle } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { ActionType } from 'texas-poker-core';
 
 import { useRoomInfo } from '@/contexts/RoomContext';
 import { doAction } from '@/service';
+import { showToast } from '@/utils/toast';
 
 export interface ActionsState {
   actions?: ActionType[];
@@ -82,7 +83,7 @@ const Actions = (props: { actionState: ActionsState }) => {
 
   const onMainBtn = async () => {
     if (!matchId) {
-      Alert.alert('对局Id 错误');
+      showToast('对局Id 错误');
 
       return;
     }
@@ -99,7 +100,7 @@ const Actions = (props: { actionState: ActionsState }) => {
 
   const onSubBtn = async (actionType: 'fold' | 'check') => {
     if (!matchId) {
-      Alert.alert('对局Id 错误');
+      showToast('对局Id 错误');
 
       return;
     }

@@ -77,16 +77,24 @@ const quitRoom = async (params: Pick<Room, 'id'>) => {
   return data;
 };
 
-const login = async (params: { name: string }) => {
-  const { data } = await http<{ token: string }>('user/sign', params);
+const login = async (params: { username: string; password: string }) => {
+  const { data } = await http<{ token: string; type: 'login' | 'register' }>(
+    'user/sign',
+    params
+  );
 
   await AsyncStorage.setItem('userToken', data.token);
+  return data;
 };
 
 const getUser = async () => {
-  const { data } = await http<User>('user/info');
+  const { data } = await http<User>('user/info', undefined, { slience: true });
 
   return data;
+};
+
+const setNickname = async (nickname: string) => {
+  await http('user/setName', { name: nickname });
 };
 
 export {
@@ -97,6 +105,7 @@ export {
   joinRoom,
   deleteRoom,
   getUser,
+  setNickname,
   quitRoom,
   startGame,
   readyGame,

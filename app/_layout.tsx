@@ -3,14 +3,14 @@ import { Stack } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
 import {
   ReanimatedLogLevel,
   configureReanimatedLogger
 } from 'react-native-reanimated';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
-import { ErrorProvider } from '@/contexts/ErrorContext';
+import { ToastBridge } from '@/components/ui/toast';
 import { UserProvider } from '@/contexts/UserContext';
 import '@/global.css';
 
@@ -35,10 +35,37 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  useEffect(() => {
+  const lockLandscape = () => {
     ScreenOrientation.lockAsync(
       ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT
     );
+  };
+
+  useEffect(() => {
+    lockLandscape();
+
+    const subscription = ScreenOrientation.addOrientationChangeListener(
+      (event) => {
+        const { orientation } = event.orientationInfo;
+        const isPortrait =
+          orientation === ScreenOrientation.Orientation.PORTRAIT_UP ||
+          orientation === ScreenOrientation.Orientation.PORTRAIT_DOWN;
+        if (isPortrait) {
+          lockLandscape();
+        }
+      }
+    );
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        lockLandscape();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      appStateSub.remove();
+    };
   }, []);
   const theme = useColorScheme();
 
@@ -47,14 +74,16 @@ export default function RootLayout() {
   }
 
   return (
-    <GluestackUIProvider mode={theme!}>
-      <UserProvider>
-        <ErrorProvider>
+    <GluestackUIProvider mode={theme || 'light'}>
+      <ToastBridge>
+        <UserProvider>
+          {/* <ErrorProvider> */}
           <Stack
             screenOptions={{
               // 禁用所有屏幕的返回手势
               gestureEnabled: false
             }}
+            initialRouteName="transition"
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen
@@ -72,9 +101,22 @@ export default function RootLayout() {
                 headerShown: false
               }}
             />
+            <Stack.Screen
+              name="transition"
+              options={{
+                headerShown: false
+              }}
+            />
+            <Stack.Screen
+              name="home"
+              options={{
+                headerShown: false
+              }}
+            />
           </Stack>
-        </ErrorProvider>
-      </UserProvider>
+          {/* </ErrorProvider> */}
+        </UserProvider>
+      </ToastBridge>
     </GluestackUIProvider>
   );
 }

@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
+import { useRouter } from 'expo-router';
 import React, {
   ReactNode,
   createContext,
@@ -8,13 +10,23 @@ import React, {
 } from 'react';
 import type { User } from 'texas-poker-core';
 
-import { getUser, login as loginService } from '@/service';
+import {
+  getUser,
+  login as loginService,
+  setNickname as setNicknameService
+} from '@/service';
 
 // 定义 Context 类型
 type UserContextType = {
   /** 用户信息 同时也用于是否登陆标识 */
   user: User | undefined;
-  login: (name: string) => void;
+  /** 重新拉取用户信息（如 token 存在但 user 未就绪时） */
+  loadUser: () => Promise<void>;
+  login: (
+    username: string,
+    password: string
+  ) => Promise<{ token: string; type: 'login' | 'register' }>;
+  setNickname: (nickname: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 };
@@ -36,7 +48,7 @@ export const useUser = () => {
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | undefined>();
   const [loading, setLoading] = useState(true);
-
+  const router = useRouter();
   const loadUser = async () => {
     try {
       const userInfo = await getUser();
@@ -55,20 +67,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
   }, []);
 
-  const login = async (name: string) => {
-    await loginService({ name });
+  const login = async (username: string, password: string) => {
+    const hashedPassword = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      password
+    );
 
-    loadUser();
+    const data = await loginService({ username, password: hashedPassword });
+
+    return data;
+  };
+
+  const setNickname = async (nickname: string) => {
+    await setNicknameService(nickname);
   };
 
   const logout = async () => {
     setUser(undefined);
-
+    router.push({ pathname: '/login' });
     await AsyncStorage.clear();
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, login, logout }}>
+    <UserContext.Provider
+      value={{ user, loading, loadUser, login, setNickname, logout }}
+    >
       {children}
     </UserContext.Provider>
   );

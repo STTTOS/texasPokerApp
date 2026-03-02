@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { Alert } from 'react-native';
+import axios, { AxiosRequestConfig } from 'axios';
+
+import { showToast } from '@/utils/toast';
 
 interface ResBasic<T> {
   code: number;
@@ -22,11 +23,18 @@ axios.interceptors.request.use(async (config) => {
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function betterRequest<R>(url: string, params?: Record<string, any>) {
+async function betterRequest<R>(
+  url: string,
+  params?: Record<string, unknown>,
+  config?: AxiosRequestConfig & { slience?: boolean }
+) {
   try {
     const { data } = await axios<ResBasic<R>>(baseUrl + url, {
       method: 'POST',
-      data: params
+      data: params,
+      // 请求超时时间30秒
+      timeout: 1000 * 30,
+      ...config
     });
 
     if (data?.code !== 200) {
@@ -35,12 +43,12 @@ async function betterRequest<R>(url: string, params?: Record<string, any>) {
 
     return data;
   } catch (error) {
-    const errMsg = (error as Error).message;
+    const isTimeout =
+      axios.isAxiosError(error) && error.code === 'ECONNABORTED';
+    const errMsg = isTimeout ? '请求超时' : (error as Error).message;
 
-    Alert.alert('', errMsg);
+    if (!config?.slience) showToast(errMsg);
 
-    // 错误提示
-    // 继续抛出错误, 为了终止之后的Promise处理进程
     throw new Error(errMsg);
   }
 }
